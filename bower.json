@@ -1,0 +1,20 @@
+{
+  "name": "cadesplugin",
+  "homepage": "https://github.com/adicom-systems/cadesplugin",
+  "authors": [
+    "Виталий Варламов <stdevol@gmail.com>"
+  ],
+  "description": "",
+  "main": "cadesplugin_api.js",
+  "keywords": [
+    "cadesplugin"
+  ],
+  "license": "N/A",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
