@@ -1,5 +1,8 @@
 (function () {
-    
+    //already loaded
+    if(window.cadesplugin)
+        return
+        
     var pluginObject
     var plugin_resolved = 0
     var plugin_reject
@@ -18,9 +21,46 @@
             plugin_resolve = resolve
             plugin_reject = reject
         })
-    } else 
+    } else
     {
         cadesplugin = {}
+    }
+
+    function cpcsp_console_log(level, msg){
+        if (level <= cadesplugin.current_log_level ){
+            if (level == cadesplugin.LOG_LEVEL_DEBUG)
+                console.log("DEBUG: %s", msg)
+            if (level == cadesplugin.LOG_LEVEL_INFO)
+                console.info("INFO: %s", msg)
+            if (level == cadesplugin.LOG_LEVEL_ERROR)
+                console.error("ERROR: %s", msg)
+            return
+        }
+    }
+
+    function set_log_level(level){
+        if (!((level == cadesplugin.LOG_LEVEL_DEBUG) ||
+              (level == cadesplugin.LOG_LEVEL_INFO) ||
+              (level == cadesplugin.LOG_LEVEL_ERROR))){
+            cpcsp_console_log(cadesplugin.LOG_LEVEL_ERROR, "cadesplugin_api.js: Incorrect log_level: " + level)
+            return
+        }
+        cadesplugin.current_log_level = level
+        if (cadesplugin.current_log_level == cadesplugin.LOG_LEVEL_DEBUG)
+            cpcsp_console_log(cadesplugin.LOG_LEVEL_INFO, "cadesplugin_api.js: log_level = DEBUG")
+        if (cadesplugin.current_log_level == cadesplugin.LOG_LEVEL_INFO)
+            cpcsp_console_log(cadesplugin.LOG_LEVEL_INFO, "cadesplugin_api.js: log_level = INFO")
+        if (cadesplugin.current_log_level == cadesplugin.LOG_LEVEL_ERROR)
+            cpcsp_console_log(cadesplugin.LOG_LEVEL_INFO, "cadesplugin_api.js: log_level = ERROR")
+        if(isChromiumBased())
+        {
+            if (cadesplugin.current_log_level == cadesplugin.LOG_LEVEL_DEBUG)
+                window.postMessage("set_log_level=debug", "*")
+            if (cadesplugin.current_log_level == cadesplugin.LOG_LEVEL_INFO)
+                window.postMessage("set_log_level=info", "*")
+            if (cadesplugin.current_log_level == cadesplugin.LOG_LEVEL_ERROR)
+                window.postMessage("set_log_level=error", "*")
+        }
     }
 
     function set_constantValues()
@@ -113,6 +153,10 @@
         cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411 = 100
         cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_256 = 101
         cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_512 = 102
+
+        cadesplugin.LOG_LEVEL_DEBUG = 4
+        cadesplugin.LOG_LEVEL_INFO = 2
+        cadesplugin.LOG_LEVEL_ERROR = 1
     }
 
     function async_spawn(generatorFunc) {
@@ -151,10 +195,10 @@
     function isChromiumBased()
     {
         var retVal_chrome = navigator.userAgent.match(/chrome/i)
-        //некоторых версиях IE8 с подключенным плагином chromeframe он определяется как 
+        //некоторых версиях IE8 с подключенным плагином chromeframe он определяется как
         //Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; chromeframe/29.0.1547.67;
         // и может попадать в ветку Chrome
-        var retVal_chromeframe = navigator.userAgent.match(/chromeframe/i) 
+        var retVal_chromeframe = navigator.userAgent.match(/chromeframe/i)
         isOpera = navigator.userAgent.match(/opr/i)
         isYaBrowser = navigator.userAgent.match(/YaBrowser/i)
 
@@ -163,12 +207,12 @@
         else
         {
             // В Chrome и Opera работаем через асинхронную версию
-            if(retVal_chrome.length > 0 || isOpera != null ) 
+            if(retVal_chrome.length > 0 || isOpera != null )
             {
                 return true
             }
         }
-        return false    
+        return false
     }
 
     // Функция активации объектов КриптоПро ЭЦП Browser plug-in
@@ -190,8 +234,15 @@
                     throw("Для создания обьектов X509Enrollment следует настроить веб-узел на использование проверки подлинности по протоколу HTTPS")
                 }
             }
-            // Объекты CAPICOM и CAdESCOM создаются обычным способом
-            return new ActiveXObject(name)
+            // Объекты CAPICOM и CAdESCOM создаются через CAdESCOM.WebClassFactory
+            try {
+                var objWebClassFactory = document.getElementById("webClassFactory")
+                return objWebClassFactory.CreateObject(name)
+            }
+            catch (e) {
+                // Для версий плагина ниже 2.0.12538
+                return new ActiveXObject(name)
+            }
         }
         // В Firefox, Safari создаются объекты NPAPI
         return pluginObject.CreateObject(name)
@@ -206,14 +257,14 @@
     var ru_cryptopro_npcades_10_native_bridge = {
       callbacksCount : 1,
       callbacks : {},
-      
+
       // Automatically called by native layer when a result is available
       resultForCallback : function resultForCallback(callbackId, resultArray) {
             var callback = ru_cryptopro_npcades_10_native_bridge.callbacks[callbackId]
             if (!callback) return
             callback.apply(null,resultArray)
       },
-      
+
       // Use this in javascript to request native objective-c code
       // functionName : string (I think the name is explicit :p)
       // args : array of arguments
@@ -221,10 +272,10 @@
       call : function call(functionName, args, callback) {
         var hasCallback = callback && typeof callback == "function"
         var callbackId = hasCallback ? ru_cryptopro_npcades_10_native_bridge.callbacksCount++ : 0
-        
+
         if (hasCallback)
           ru_cryptopro_npcades_10_native_bridge.callbacks[callbackId] = callback
-        
+
         var iframe = document.createElement("IFRAME")
             var arrObjs = new Array("_CPNP_handle")
             try{
@@ -254,7 +305,7 @@
             throw ex
         return tmpobj
     }
-    
+
     //Выводим окно поверх других с предложением установить расширение для Opera.
     //Если установленна переменная cadesplugin_skip_extension_install - не предлагаем установить расширение
     function install_opera_extension()
@@ -265,10 +316,10 @@
                 var ovr = document.createElement('div')
                 ovr.id = "cadesplugin_ovr"
                 ovr.style = "visibility: hidden; position: fixed; left: 0px; top: 0px; width:100%; height:100%; background-color: rgba(0,0,0,0.7)"
-                ovr.innerHTML = "<div id='cadesplugin_ovr_item' style='position:relative; width:400px; margin:100px auto; background-color:#fff; border:2px solid #000; padding:10px; text-align:center; opacity: 1; z-index: 1500'>" + 
-                                "<button id='cadesplugin_close_install' style='float: right; font-size: 10px; background: transparent; border: 1; margin: -5px'>X</button>" + 
-                                "<p>Для работы КриптоПро ЭЦП Browser plugin на данном сайте необходимо установить расширение из каталога дополнений Opera." + 
-                                "<p><button id='cadesplugin_install' style='font:12px Arial'>Установить расширение</button></p>" + 
+                ovr.innerHTML = "<div id='cadesplugin_ovr_item' style='position:relative; width:400px; margin:100px auto; background-color:#fff; border:2px solid #000; padding:10px; text-align:center; opacity: 1; z-index: 1500'>" +
+                                "<button id='cadesplugin_close_install' style='float: right; font-size: 10px; background: transparent; border: 1; margin: -5px'>X</button>" +
+                                "<p>Для работы КриптоПро ЭЦП Browser plugin на данном сайте необходимо установить расширение из каталога дополнений Opera." +
+                                "<p><button id='cadesplugin_install' style='font:12px Arial'>Установить расширение</button></p>" +
                                 "</div>"
                 document.getElementsByTagName("Body")[0].appendChild(ovr)
                 var btn_install = document.getElementById("cadesplugin_install")
@@ -297,12 +348,21 @@
                     e.stopPropagation()
                 })
             })
-        }else 
+        }else
         {
             plugin_loaded_error("Плагин недоступен")
         }
     }
 
+    function extension_onload () {
+        window.postMessage("cadesplugin_echo_request", "*")
+        window.addEventListener("message", function (event){
+            if (event.data != "cadesplugin_loaded")
+               return
+            cpcsp_chrome_nmcades.check_chrome_plugin(plugin_loaded, plugin_loaded_error)
+            },
+        false)
+    }
     //Загружаем расширения для Chrome, Opera, YaBrowser
     function load_extension()
     {
@@ -310,11 +370,13 @@
         fileref.setAttribute("type", "text/javascript")
         fileref.setAttribute("src", "chrome-extension://iifchhfnnmpdbibifmljnfjhpififfog/nmcades_plugin_api.js")
         fileref.onerror = plugin_loaded_error
+        fileref.onload = extension_onload
         document.getElementsByTagName("head")[0].appendChild(fileref)
         fileref = document.createElement('script')
         fileref.setAttribute("type", "text/javascript")
         fileref.setAttribute("src", "chrome-extension://epebfcehmdedogndhlcacafjaacknbcm/nmcades_plugin_api.js")
         fileref.onerror = plugin_loaded_error
+        fileref.onload = extension_onload
         document.getElementsByTagName("head")[0].appendChild(fileref)
     }
 
@@ -334,10 +396,15 @@
             elem1.setAttribute("classid", "clsid:884e2049-217d-11da-b2a4-000e7bbb2b09")
             elem1.setAttribute("style", "visibility=hidden")
             document.getElementsByTagName("body")[0].appendChild(elem1)
+            var elem2 = document.createElement('object')
+            elem2.setAttribute("id", "webClassFactory")
+            elem2.setAttribute("classid", "clsid:B04C8637-10BD-484E-B0DA-B8A039F60024")
+            elem2.setAttribute("style", "visibility=hidden")
+            document.getElementsByTagName("body")[0].appendChild(elem2)
         }
     }
 
-    //Отправляем событие что все ок. 
+    //Отправляем событие что все ок.
     function plugin_loaded()
     {
         plugin_resolved = 1
@@ -349,7 +416,7 @@
         }
     }
 
-    //Отправляем событие что сломались. 
+    //Отправляем событие что сломались.
     function plugin_loaded_error(msg)
     {
         if(isChromiumBased())
@@ -389,7 +456,7 @@
         }
 
     }
-    
+
     //Вспомогательная функция для NPAPI
     function createPromise(arg)
     {
@@ -397,43 +464,44 @@
     }
 
     function check_npapi_plugin (){
-                try {
-                    var oAbout = CreateObject("CAdESCOM.About")
-                    plugin_loaded()
+        try {
+            var oAbout = CreateObject("CAdESCOM.About")
+            plugin_loaded()
+        }
+        catch (err) {
+            document.getElementById("cadesplugin_object").style.display = 'none'
+            // Объект создать не удалось, проверим, установлен ли
+            // вообще плагин. Такая возможность есть не во всех браузерах
+            var mimetype = navigator.mimeTypes["application/x-cades"]
+            if (mimetype) {
+                var plugin = mimetype.enabledPlugin
+                if (plugin) {
+                    plugin_loaded_error("Плагин загружен, но не создаются обьекты")
+                }else
+                {
+                    plugin_loaded_error("Ошибка при загрузке плагина")
                 }
-                catch (err) {
-                    document.getElementById("cadesplugin_object").style.display = 'none'
-                    // Объект создать не удалось, проверим, установлен ли 
-                    // вообще плагин. Такая возможность есть не во всех браузерах
-                    var mimetype = navigator.mimeTypes["application/x-cades"]
-                    if (mimetype) {
-                        var plugin = mimetype.enabledPlugin
-                        if (plugin) {
-                            plugin_loaded_error("Плагин загружен, но не создаются обьекты")
-                        }else
-                        {
-                            plugin_loaded_error("Ошибка при загрузке плагина")
-                        }
-                    }else
-                    {
-                        plugin_loaded_error("Плагин недоступен")
-                    }
-                }
+            }else
+            {
+                plugin_loaded_error("Плагин недоступен")
+            }
+        }
     }
 
     //Проверяем работает ли плагин
     function check_plugin_working()
     {
+        var div = document.createElement("div")
+        div.innerHTML = "<!--[if lt IE 9]><iecheck></iecheck><![endif]-->"
+        var isIeLessThan9 = (div.getElementsByTagName("iecheck").length == 1)
+        if (isIeLessThan9) {
+            plugin_loaded_error("Internet Explorer версии 8 и ниже не поддерживается")
+            return
+        }
+
         if(isChromiumBased())
         {
             load_extension()
-            window.postMessage("cadesplugin_echo_request", "*")
-            window.addEventListener("message", function (event){
-                if (event.data != "cadesplugin_loaded")
-                   return
-                cpcsp_chrome_nmcades.check_chrome_plugin(plugin_loaded, plugin_loaded_error)
-                },
-            false)
         }else if(!canPromise) {
                 window.addEventListener("message", function (event){
                     if (event.data != "cadesplugin_echo_request")
@@ -442,7 +510,7 @@
                     check_npapi_plugin()
                     },
                 false)
-        }else 
+        }else
         {
             window.addEventListener("load", function (event) {
                 load_npapi_plugin()
@@ -456,10 +524,11 @@
         pluginObject = obj
     }
 
-    //Export 
+    //Export
     cadesplugin.JSModuleVersion = "2.0.2"
     cadesplugin.async_spawn = async_spawn
     cadesplugin.set = set_pluginObject
+    cadesplugin.set_log_level = set_log_level
 
     if(isChromiumBased())
     {
@@ -481,6 +550,7 @@
 
     set_constantValues()
 
+    cadesplugin.current_log_level = cadesplugin.LOG_LEVEL_ERROR
     window.cadesplugin = cadesplugin
     check_plugin_working()
 }())
