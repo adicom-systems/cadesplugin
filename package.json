@@ -1,0 +1,8 @@
+{
+  "name": "cadesplugin",
+  "version": "1.0.0",
+  "description": "Cryptopro cades plugin",
+  "main": "cadesplugin_api.js",
+  "repository": "https://github.com/adicom-systems/cadesplugin.git",
+  "author": "Ivan Samoylenko <mutsmu@gmail.com>"
+}
