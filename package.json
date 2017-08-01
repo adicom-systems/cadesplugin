@@ -1,6 +1,6 @@
 {
   "name": "cadesplugin",
-  "version": "1.0.0",
+  "version": "2.3.0",
   "description": "Cryptopro cades plugin",
   "main": "cadesplugin_api.js",
   "repository": "https://github.com/adicom-systems/cadesplugin.git",
