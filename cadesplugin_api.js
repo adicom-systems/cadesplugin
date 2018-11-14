@@ -180,6 +180,12 @@
         cadesplugin.LOG_LEVEL_DEBUG = 4;
         cadesplugin.LOG_LEVEL_INFO = 2;
         cadesplugin.LOG_LEVEL_ERROR = 1;
+
+        cadesplugin.CADESCOM_AllowNone = 0;
+        cadesplugin.CADESCOM_AllowNoOutstandingRequest = 0x1;
+        cadesplugin.CADESCOM_AllowUntrustedCertificate = 0x2;
+        cadesplugin.CADESCOM_AllowUntrustedRoot = 0x4;
+        cadesplugin.CADESCOM_SkipInstallToStore = 0x10000000;
     }
 
     function async_spawn(generatorFunc) {
@@ -205,7 +211,7 @@
     function isIE() {
         // var retVal = (("Microsoft Internet Explorer" == navigator.appName) || // IE < 11
         //     navigator.userAgent.match(/Trident\/./i)); // IE 11
-        return (browserSpecs.name == 'IE');
+        return (browserSpecs.name == 'IE' || browserSpecs.name == 'MSIE');
     }
 
     function isIOS() {
@@ -217,31 +223,8 @@
 
     function isNativeMessageSupported()
     {
-  //       var retVal_chrome = navigator.userAgent.match(/chrome/i);
-  //       isOpera = navigator.userAgent.match(/opr/i);
-  //       isYaBrowser = navigator.userAgent.match(/YaBrowser/i);
-  //       isFireFox = navigator.userAgent.match(/Firefox/i);
-		// isEdge = navigator.userAgent.match(/Edge/i);
-
-  //       if(isFireFox && window.allow_firefox_cadesplugin_async)
-  //           return true;
-
-		// if (isEdge)
-		// 	return true;
-
-  //       if(retVal_chrome == null) 
-  //           return false;
-  //       else
-  //       {
-  //           // В Chrome и Opera работаем через асинхронную версию
-  //           if(retVal_chrome.length > 0 || isOpera != null )
-  //           {
-  //               return true;
-  //           }
-  //       }
-  //       return false;
         // В IE работаем через NPAPI
-        if(browserSpecs.name == 'IE')
+        if(isIE())
             return false;
         // В Edge работаем через NativeMessage
         if(browserSpecs.name == 'Edge') {
@@ -338,6 +321,11 @@
         } catch(e) {
             return GetMessageFromException(exception);
         }
+    }
+
+    // Функция для удаления созданных объектов
+    function ReleasePluginObjects() {
+        return cpcsp_chrome_nmcades.ReleasePluginObjects();
     }
 
     // Функция активации асинхронных объектов КриптоПро ЭЦП Browser plug-in
@@ -681,7 +669,7 @@
     }
 
     //Export
-    cadesplugin.JSModuleVersion = "2.1.0";
+    cadesplugin.JSModuleVersion = "2.1.1";
     cadesplugin.async_spawn = async_spawn;
     cadesplugin.set = set_pluginObject;
     cadesplugin.set_log_level = set_log_level;
@@ -690,6 +678,7 @@
     if(isNativeMessageSupported())
     {
         cadesplugin.CreateObjectAsync = CreateObjectAsync;
+        cadesplugin.ReleasePluginObjects = ReleasePluginObjects;
     }
 
     if(!isNativeMessageSupported())
